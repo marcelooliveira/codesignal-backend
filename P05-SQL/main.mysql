@@ -1,0 +1,40 @@
+CREATE PROCEDURE solution()
+BEGIN
+    DECLARE done INT DEFAULT FALSE;
+    DECLARE v_request INT;
+    DECLARE v_seat_no INT;
+    DECLARE v_person_id INT;
+
+    DECLARE cur CURSOR FOR
+        SELECT request, seat_no, person_id
+        FROM requests
+        ORDER BY request_id;
+
+    DECLARE CONTINUE HANDLER FOR NOT FOUND SET done = TRUE;
+
+    OPEN cur;
+
+    read_loop: LOOP
+        FETCH cur INTO v_request, v_seat_no, v_person_id;
+        IF done THEN
+            LEAVE read_loop;
+        END IF;
+
+        IF v_request = 1 THEN
+            -- Reserve: only if the seat is currently free
+            UPDATE seats
+            SET status = 1, person_id = v_person_id
+            WHERE seat_no = v_seat_no AND status = 0;
+        ELSEIF v_request = 2 THEN
+            -- Purchase: if the seat is free, or reserved by this same person
+            UPDATE seats
+            SET status = 2, person_id = v_person_id
+            WHERE seat_no = v_seat_no
+              AND (status = 0 OR (status = 1 AND person_id = v_person_id));
+        END IF;
+    END LOOP;
+
+    CLOSE cur;
+
+    SELECT * FROM seats ORDER BY seat_no;
+END
